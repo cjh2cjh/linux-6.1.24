@@ -18,6 +18,42 @@
 #define CPP_ASMLINKAGE
 #endif
 
+/*
+ * Kingwah:
+ *
+ * asmlinkage expands to nothing except on x86-32, which expands to
+ * __attribute__((regparm(0))), and according to GCC manual:
+ *
+ * regparm(number)
+ * On x86-32 targets, the regparm attribute causes the compiler to
+ * pass arguments number one to number if they are of integral type
+ * in registers EAX, EDX, and ECX instead of on the stack. Functions
+ * that take a variable number of arguments continue to be passed all
+ * of their arguments on the stack.
+ *
+ * So regparm(0) means all parameters are passed to the function on
+ * the stack, and this only affects in accepting parameters, but not
+ * in calling other functions in the decorated function.
+ *
+ * So it looks like this decorator only matters on x86-32, why?
+ *
+ * Take a look at "arch/x86/Makefile", and on x86-32, KBUILD_CFLAGS is
+ * added with "-mregparm=3". Since "arch/x86/Makefile" is included in
+ * the top "Makefile", this KBUILD_CFLAGS would affect all C files
+ * in the kernel, which means all functions accpet the first three
+ * parameters through registers.
+ *
+ * However, before "-mregparm=3" is used in "arch/x86/Makefile",
+ * all functions on x86-32 accords to the calling convention of i386
+ * SysV ABI, which is cdel that passing all parameters through stack.
+ * Especially, some assemble codes call C functions according to this
+ * convention. To keep these assemble codes unchanged, and at the
+ * same time, to turn on "-mregparm=3" on x86-32, the asmlinkage
+ * decorator was introduced to mark thoes C functions that still
+ * accords to the old cdel calling convention, and these C functions
+ * may be called from assemble codes.
+ */
+
 #ifndef asmlinkage
 #define asmlinkage CPP_ASMLINKAGE
 #endif
